@@ -1,3 +1,5 @@
+//go:build grpc
+
 package trace
 
 import (
@@ -13,18 +15,8 @@ import (
 
 const tracerProviderExportCreationTimeout = 5 * time.Second
 
-type ExporterConfig struct {
-	Type ExporterType `json:"type"`
-
-	// Endpoint to send metrics to. If empty, the default endpoint will be used.
-	Endpoint string `json:"endpoint"`
-
-	// Headers to send with metrics
-	Headers map[string]string `json:"headers"`
-
-	// If true, don't use TLS
-	Insecure bool `json:"insecure"`
-}
+// ExporterConfig is declared in exporter_config.go (no build tag) so
+// the same shape is available to callers regardless of -tags grpc.
 
 func newExporter(config ExporterConfig) (sdktrace.SpanExporter, error) {
 	var client otlptrace.Client
@@ -41,7 +33,8 @@ func newExporter(config ExporterConfig) (sdktrace.SpanExporter, error) {
 			opts = append(opts, otlptracegrpc.WithInsecure())
 		}
 		client = otlptracegrpc.NewClient(opts...)
-	case HTTP:
+	case HTTP, ZAP:
+		// ZAP falls back to HTTP in gRPC build since both are available
 		opts := []otlptracehttp.Option{
 			otlptracehttp.WithHeaders(config.Headers),
 			otlptracehttp.WithTimeout(tracerExportTimeout),
